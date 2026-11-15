@@ -89,11 +89,22 @@ body {
 }
 
 .header-inner {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   height: 64px;
+}
+
+/* 状态胶囊：桌面端固定在页首正中；窄屏回到右侧操作区，避免与标题重叠 */
+@media (min-width: 561px) {
+  .site-header .live-pill {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
 }
 
 .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -474,6 +485,7 @@ body {
 
 /* ---------- responsive ---------- */
 @media (max-width: 760px) {
+  .brand-text p { display: none; }
   .hero { padding: 32px 0 22px; }
   .stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .stat { padding: 13px 15px; }
