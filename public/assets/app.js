@@ -9,7 +9,12 @@ const el = {
   refresh: document.getElementById('refresh-btn'),
   copyGroup: document.getElementById('copy-group'),
   theme: document.getElementById('theme-btn'),
+  pill: document.getElementById('live-pill'),
+  pillText: document.getElementById('live-text'),
 };
+
+/* 数据被视为“延迟”的阈值：超过 95 分钟没更新就提示（CI 正常 30 分钟一跑） */
+const STALE_MS = 95 * 60 * 1000;
 
 const state = {
   data: null,
@@ -173,10 +178,39 @@ function renderMeta() {
   }
 }
 
+/* ---------------- live pill ---------------- */
+
+function renderPill(err) {
+  if (err) {
+    el.pill.dataset.state = 'error';
+    el.pillText.textContent = '同步失败';
+    el.pill.title = '节点数据加载失败';
+    return;
+  }
+  const iso = state.data && state.data.updated_at;
+  if (!iso) {
+    el.pill.dataset.state = 'loading';
+    el.pillText.textContent = '正在同步';
+    return;
+  }
+  const age = Date.now() - new Date(iso).getTime();
+  if (age > STALE_MS) {
+    const h = Math.floor(age / 3600000);
+    el.pill.dataset.state = 'stale';
+    el.pillText.textContent = `数据延迟 ${h} 小时`;
+    el.pill.title = `上次更新：${fmtTime(iso)}`;
+  } else {
+    el.pill.dataset.state = 'live';
+    el.pillText.textContent = '实时更新中';
+    el.pill.title = `上次更新：${fmtTime(iso)} · CI 每 30 分钟抓取一次`;
+  }
+}
+
 function renderAll() {
   renderStats();
   renderList();
   renderMeta();
+  renderPill(false);
 }
 
 /* ---------------- events ---------------- */
@@ -229,6 +263,7 @@ async function loadData(manual) {
     el.empty.hidden = false;
     el.nodes.innerHTML = '';
     el.empty.querySelector('p').textContent = '节点数据加载失败，请稍后刷新。';
+    renderPill(true);
     console.error('[cf-ip]', err);
   } finally {
     if (manual) setTimeout(() => el.refresh.classList.remove('spin'), 400);
@@ -240,7 +275,10 @@ el.refresh.addEventListener('click', () => loadData(true));
 initTheme();
 loadData(false);
 
-// 每 5 分钟自动刷新一次展示（数据本身由 CI 更新）
+// 每 5 分钟自动刷新一次展示（数据本身由 CI 更新）；每分钟校正一次胶囊状态
 setInterval(() => {
   if (!document.hidden) loadData(false);
 }, 5 * 60 * 1000);
+setInterval(() => {
+  if (!document.hidden && state.data) renderPill(false);
+}, 60 * 1000);
