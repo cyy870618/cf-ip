@@ -1,0 +1,43 @@
+name: update-nodes
+
+on:
+  schedule:
+    # 每 30 分钟抓一次（GitHub 定时任务可能有几分钟延迟）
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/update-nodes.mjs'
+      - '.github/workflows/update.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-nodes
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 抓取并聚合三网优选 IP
+        run: node scripts/update-nodes.mjs
+
+      - name: 提交数据变更
+        run: |
+          if git diff --quiet -- public/data/nodes.json; then
+            echo "数据无变化，跳过提交"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data/nodes.json
+          git commit -m "chore(data): 更新优选节点 $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
