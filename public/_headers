@@ -3,7 +3,7 @@
   Access-Control-Allow-Origin: *
 
 /assets/*
-  Cache-Control: public, max-age=3600
+  Cache-Control: public, max-age=300, must-revalidate
 
 /*
   X-Content-Type-Options: nosniff
